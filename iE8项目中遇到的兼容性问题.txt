@@ -1,0 +1,115 @@
+链接地址：http://www.cnblogs.com/zamhown/p/6709932.html
+
+Web前端页面的浏览器兼容性测试心得（三）总结一些IE8兼容问题的解决方案
+由于IE8不支持HTML5，而它又是Win7的默认浏览器，我们即使讨厌它，在这几年却也拿它没办法。
+
+最近做了个需要兼容IE8的项目，不可避免地用了HTML5+CSS3，甚至canvas和svg，做兼容工作的时候不禁叫苦不迭。一个项目下来后，倒是收集了一些志于让HTML5兼容IE8的库，还有一些零散的代码和优雅降级的技巧，整理如下。IE8的兼容工作是个大活，这篇文章还不完整，肯定有很多疏漏和不足，望读者能在评论区指正，同时我也会在之后的项目中逐渐丰富这篇文章。
+
+ 
+
+一、HTML5标签兼容方案：html5shiv.js
+GitHub地址：https://github.com/aFarkas/html5shiv/
+
+IE8不支持HTML5的新标签，如<header>、<nav>等标签在IE8无法渲染。html5shiv.js可帮助IE6-8浏览器兼容HTML5语义化标签。
+
+使用方法：在页面中引用html5shiv.js文件。必须添加在页面的<head>元素内，因为IE浏览器必须在元素解析前知道这个元素，所以这个js文件不能在页面底部引用。
+
+ 
+
+二、CSS3媒体查询兼容方案：Respond.js
+GitHub地址：https://github.com/scottjehl/Respond
+
+IE8不支持CSS媒体查询，对响应式设计大大不利。Respond.js可帮助IE6-8兼容“min/max-width”媒体查询条件。
+
+使用方法：在页面中所有css文件的引用位置之后引用Respond.js。而且Respond.js的引用得越早，用户看到页面闪烁的机会越小。
+
+ 
+
+三、CSS3字体单位“rem”兼容方案：rem.js
+GitHub地址：https://github.com/chuckcarpenter/REM-unit-polyfill
+
+CSS3引入了新的字体大小单位rem，与em的“相对于其父元素来设置字体大小”的功能不同，rem是相对于根元素<html>的字体大小比率单位，成了目前主流的单位之一。IE9+开始支持，IE8就只能通过引入js库来支持了。
+
+使用方法：在页面中引用rem.js文件。需要引用在页脚，也就是<body>末尾，在所有css文件引用和DOM元素之后。
+
+ 
+
+四、CSS3“background-size”属性的“cover”和“contain”属性值兼容方案：background-size polyfill
+GitHub地址：https://github.com/louisremi/background-size-polyfill
+
+“background-size”是CSS3新引入的属性，其中有两个属性值非常常用，分别为“cover”和“contain”。“cover”可以把背景图像扩展至足够大，以使背景图像完全覆盖背景区域，背景图像的某些部分也许无法显示在背景定位区域中。“contain”可以把图像图像扩展至最大尺寸，以使其宽度和高度完全适应内容区域。IE8同样不支持，非常不方便。这时可以引用“background-size polyfill”库来兼容。
+
+使用方法：与以上几个库不同，“background-size polyfill”的代码文件需要在css中引用。在所有用到这两个“background-size”属性值的地方，加一行“-ms-behavior”属性：
+
+.selector { 
+    background-size: cover;
+    /* 以下相对路径是相对于文档，而非css文件！ */
+    /* 使用绝对路径可以避免混淆 */
+    -ms-behavior: url(/backgroundsize.min.htc);
+}
+ 
+
+五、JS数组的forEach方法兼容方案：自行实现
+IE8的数组对象没有forEach方法，晕。所以自行声明即可，代码如下：
+
+复制代码
+if ( !Array.prototype.forEach ) {
+    Array.prototype.forEach = function forEach( callback, thisArg ) {
+        var T, k;
+        if ( this == null ) {
+            throw new TypeError( "this is null or not defined" );
+        }
+        var O = Object(this);
+        var len = O.length >>> 0;
+        if ( typeof callback !== "function" ) {
+            throw new TypeError( callback + " is not a function" );
+        }
+        if ( arguments.length > 1 ) {
+            T = thisArg;
+        }
+        k = 0;
+        while( k < len ) {
+            var kValue;
+            if ( k in O ) {
+                kValue = O[ k ];
+                callback.call( T, kValue, k, O );
+            }
+            k++;
+        }
+    };
+}
+复制代码
+此外，IE8不支持的js特性不止forEach一种，等以后遇到了再作补充。
+
+ 
+
+六、SVG图形兼容方案：优雅降级
+参考文章：http://www.zhangxinxu.com/wordpress/2013/09/svg-fallbacks/
+
+对于svg图形是真的无法直接兼容了，因此使用优雅降级，在IE8下显示替代的jpg、png或gif图片。有三种比较实用的方法：一是用js修改<img>的src属性，这里省略；二是用HTML的hack实现优雅降级，类似于如下代码：
+
+<svg width="96" height="96">
+  <image xlink:href="svg.svg" src="svg.png" width="96" height="96" />
+</svg>
+支持<svg>标签的浏览器会显示svg.svg，老版本浏览器会无视<svg>标签，渲染<image>标签，从而显示svg.png。
+
+此外，还有一种比较巧妙的方法：
+
+<img src="image.svg" onerror="this.src='image.png'">
+此法有弊端：当image.png出现问题无法载入时，会陷入死循环。
+
+ 
+
+七、Canvas兼容方案：Excanvas.js
+下载地址：http://code.google.com/p/explorercanvas/downloads/list
+
+Canvas的功能非常强大，兼容IE8的工作也很繁巨。可能有很大一部分情况要用优雅降级，但是一些情况下可以使用Google出的Excanvas.js库。它是利用IE支持的VML对象来模拟Canvas的绘图的，有些情况下可用，但无法穷尽Canvas的所有功能。
+
+使用方法：在页面中引用Excanvas.js文件，最好在<head>标签中。
+
+具体注意事项可以参考文章：http://rockyuse.iteye.com/blog/1618298
+
+ 
+
+八、Canvas+WebGL兼容方案：优雅降级
+最近WebGL库——Three.js越来越流行了，但它只支持IE11+，IE8的兼容好像无解……所以只能优雅降级，但是效果肯定大打折扣。如有兼容方案，还请不吝赐教！
